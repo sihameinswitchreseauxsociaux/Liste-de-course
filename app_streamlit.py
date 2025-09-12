@@ -169,18 +169,19 @@ if st.button("📋 Générer la liste de courses"):
     ]
 
 # Affichage liste
-if st.session_state.liste_courses:
+if "liste_courses" in st.session_state and st.session_state.liste_courses:
     st.subheader("📋 Liste de courses")
 
-    liste_formatee = "\n".join([f"- {item}" for item in st.session_state.liste_courses])
-    st.markdown(liste_formatee)
-
     suppression = st.multiselect("❌ Supprimer des éléments :", st.session_state.liste_courses)
-    if st.button("Supprimer sélection"):
-        nouvelle_liste = [
+
+    if st.button("Supprimer sélection") and suppression:
+        st.session_state.liste_courses = [
             item for item in st.session_state.liste_courses if item not in suppression
         ]
-        st.session_state.liste_courses = nouvelle_liste
-        st.success("Éléments supprimés.")
+        st.rerun()  # 🔁 Force le rafraîchissement de l'app après suppression
+
+    # Affichage mis à jour après suppression
+    liste_formatee = "\n".join([f"- {item}" for item in st.session_state.liste_courses])
+    st.markdown(liste_formatee)
 
 
