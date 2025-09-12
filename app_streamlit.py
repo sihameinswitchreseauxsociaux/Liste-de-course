@@ -177,9 +177,10 @@ if st.session_state.liste_courses:
 
     suppression = st.multiselect("❌ Supprimer des éléments :", st.session_state.liste_courses)
     if st.button("Supprimer sélection"):
-        st.session_state.liste_courses = [
+        nouvelle_liste = [
             item for item in st.session_state.liste_courses if item not in suppression
         ]
+        st.session_state.liste_courses = nouvelle_liste
         st.success("Éléments supprimés.")
 
 
