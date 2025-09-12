@@ -153,9 +153,10 @@ if st.button("📋 Générer la liste de courses"):
             if nom not in stock_permanent:
                 quantites[nom] += quantite
 
-    for item in st.session_state.stock_manquant + st.session_state.ajouts_manuels:
-        nom = normalisation.get(item.lower(), item.lower())
-        quantites[nom] += 1
+        for item in set(st.session_state.stock_manquant + st.session_state.ajouts_manuels):
+            nom = normalisation.get(item.lower(), item.lower())
+            quantites[nom] += 1
+
 
     st.session_state.liste_courses = [f"{qte} {nom}" for nom, qte in sorted(quantites.items())]
 
