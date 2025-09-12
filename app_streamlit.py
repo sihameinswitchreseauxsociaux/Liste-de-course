@@ -153,16 +153,20 @@ if st.button("📋 Générer la liste de courses"):
             if nom not in stock_permanent:
                 quantites[nom] += quantite
 
-    # ✅ Correction : éviter les doublons dans les ajouts manuels et le stock
+    # Ajout des ingrédients manuels et du stock, sans doublons ni quantité imposée
     ingredients_uniques = set(
         normalisation.get(item.lower(), item.lower())
         for item in st.session_state.stock_manquant + st.session_state.ajouts_manuels
     )
 
     for nom in ingredients_uniques:
-        quantites[nom] += 1
+        quantites[nom] += 0  # On initialise sans quantité
 
-    st.session_state.liste_courses = [f"{qte} {nom}" for nom, qte in sorted(quantites.items())]
+    # Construction de la liste finale
+    st.session_state.liste_courses = [
+        f"{nom}" if qte == 0 else f"{qte} {nom}"
+        for nom, qte in sorted(quantites.items())
+    ]
 
 # Affichage liste
 if st.session_state.liste_courses:
