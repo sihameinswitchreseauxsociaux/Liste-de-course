@@ -5,33 +5,6 @@ import os
 import re
 from collections import defaultdict
 
-# === Fichier JSON ===
-FICHIER_JSON = "etat_courses.json"
-
-def charger_etat():
-    if os.path.exists(FICHIER_JSON):
-        with open(FICHIER_JSON, "r", encoding="utf-8") as f:
-            return json.load(f)
-    else:
-        return {
-            "semaine_actuelle": 1,
-            "derniere_date": str(datetime.date.today())
-        }
-
-def sauvegarder_etat(etat):
-    with open(FICHIER_JSON, "w", encoding="utf-8") as f:
-        json.dump(etat, f, indent=4, ensure_ascii=False)
-
-def mise_a_jour_semaine(etat):
-    aujourd_hui = datetime.date.today()
-    dernier_lundi = aujourd_hui - datetime.timedelta(days=aujourd_hui.weekday())
-    derniere_date = datetime.datetime.strptime(etat["derniere_date"], "%Y-%m-%d").date()
-
-    if derniere_date < dernier_lundi:
-        etat["semaine_actuelle"] = 2 if etat["semaine_actuelle"] == 1 else 1
-        etat["derniere_date"] = str(aujourd_hui)
-        sauvegarder_etat(etat)
-
 # === Données ===
 stock_permanent = [
     "beurre", "huile d'olive", "persil", "thym", "sel",
@@ -76,17 +49,15 @@ normalisation = {
 }
 
 # === Initialisation ===
-etat = charger_etat()
-mise_a_jour_semaine(etat)
-semaine_actuelle = etat["semaine_actuelle"]
-
 for key in ["jours_absents_1", "jours_absents_2", "stock_manquant", "ajouts_manuels", "liste_courses"]:
     if key not in st.session_state:
         st.session_state[key] = []
 
 # === Interface ===
 st.title("🛒 Planificateur de courses")
-st.subheader(f"📆 Semaine actuelle : Semaine {semaine_actuelle}")
+
+# Choix manuel de la semaine
+semaine_actuelle = st.radio("📆 Choisis la semaine :", ["Semaine 1", "Semaine 2"])
 
 # Absences par semaine
 with st.expander("🕒 Gérer les absences par semaine"):
@@ -118,25 +89,22 @@ with st.expander("📦 Ajouter du stock à racheter"):
 # Ajout manuel
 ajout = st.text_input("➕ Ajouter un ingrédient manuellement")
 if ajout:
-    st.session_state.ajouts_manuels.append(ajout)
-    st.success(f"Ajouté : {ajout}")
-
-# Vacances
-if st.button("🏖️ Réinitialiser après vacances"):
-    etat["semaine_actuelle"] = 1
-    etat["derniere_date"] = str(datetime.date.today())
-    sauvegarder_etat(etat)
-    st.success("Planning réinitialisé à la semaine 1")
+    nom_normalisé = ajout.strip().lower()
+    if nom_normalisé not in [i.lower() for i in st.session_state.ajouts_manuels]:
+        st.session_state.ajouts_manuels.append(ajout)
+        st.success(f"Ajouté : {ajout}")
+    else:
+        st.warning(f"🔁 {ajout} est déjà dans la liste.")
 
 # Générer la liste
 if st.button("📋 Générer la liste de courses"):
     quantites = defaultdict(int)
-    recettes = planning.get(f"Semaine {semaine_actuelle}", [])
+    recettes = planning.get(semaine_actuelle, [])
     jours = ["lundi midi", "lundi soir", "mardi midi", "mardi soir", "mercredi midi", "mercredi soir",
              "jeudi midi", "jeudi soir", "vendredi midi", "vendredi soir", "samedi midi",
              "samedi soir", "dimanche midi", "dimanche soir"]
 
-    absents = st.session_state.get(f"jours_absents_{semaine_actuelle}", [])
+    absents = st.session_state.get(f"jours_absents_{1 if semaine_actuelle == 'Semaine 1' else 2}", [])
 
     for i, recette in enumerate(recettes):
         try:
@@ -173,16 +141,14 @@ if st.button("📋 Générer la liste de courses"):
 if "liste_courses" in st.session_state and st.session_state.liste_courses:
     st.subheader("📋 Liste de courses")
 
-    # Sélection des éléments à supprimer
     suppression = st.multiselect("❌ Supprimer des éléments :", st.session_state.liste_courses)
 
-    # Bouton de suppression
     if st.button("Supprimer sélection") and suppression:
         st.session_state.liste_courses = [
             item for item in st.session_state.liste_courses if item not in suppression
         ]
         st.rerun()  # 🔁 Force le rafraîchissement de l'app après suppression
 
-    # Affichage de la liste mise à jour
+    # Affichage mis à jour après suppression
     liste_formatee = "\n".join([f"- {item}" for item in st.session_state.liste_courses])
     st.markdown(liste_formatee)
