@@ -1,7 +1,4 @@
 import streamlit as st
-import datetime
-import json
-import os
 import re
 from collections import defaultdict
 
@@ -99,28 +96,35 @@ if ajout:
 # Générer la liste
 if st.button("📋 Générer la liste de courses"):
     quantites = defaultdict(int)
-    recettes = planning.get(semaine_actuelle, [])
+
+    # Ordre des semaines selon sélection
+    semaines = ["Semaine 1", "Semaine 2"]
+    index_depart = semaines.index(semaine_actuelle)
+    ordre_semaines = [semaines[index_depart], semaines[1 - index_depart]]
+
     jours = ["lundi midi", "lundi soir", "mardi midi", "mardi soir", "mercredi midi", "mercredi soir",
              "jeudi midi", "jeudi soir", "vendredi midi", "vendredi soir", "samedi midi",
              "samedi soir", "dimanche midi", "dimanche soir"]
 
-    absents = st.session_state.get(f"jours_absents_{1 if semaine_actuelle == 'Semaine 1' else 2}", [])
+    for semaine in ordre_semaines:
+        recettes = planning.get(semaine, [])
+        absents = st.session_state.get(f"jours_absents_{1 if semaine == 'Semaine 1' else 2}", [])
 
-    for i, recette in enumerate(recettes):
-        try:
-            jour_midi = jours[i * 2]
-            jour_soir = jours[i * 2 + 1]
-        except IndexError:
-            continue
-        if jour_midi in absents and jour_soir in absents:
-            continue
-        for ing in recettes_2repas.get(recette, []):
-            match = re.match(r"(\d+)\s+(.*)", ing)
-            quantite = int(match.group(1)) if match else 1
-            nom = match.group(2).strip().lower() if match else ing.strip().lower()
-            nom = normalisation.get(nom, nom)
-            if nom not in stock_permanent:
-                quantites[nom] += quantite
+        for i, recette in enumerate(recettes):
+            try:
+                jour_midi = jours[i * 2]
+                jour_soir = jours[i * 2 + 1]
+            except IndexError:
+                continue
+            if jour_midi in absents and jour_soir in absents:
+                continue
+            for ing in recettes_2repas.get(recette, []):
+                match = re.match(r"(\d+)\s+(.*)", ing)
+                quantite = int(match.group(1)) if match else 1
+                nom = match.group(2).strip().lower() if match else ing.strip().lower()
+                nom = normalisation.get(nom, nom)
+                if nom not in stock_permanent:
+                    quantites[nom] += quantite
 
     # Ajout des ingrédients manuels et du stock, sans doublons ni quantité imposée
     ingredients_uniques = set(
