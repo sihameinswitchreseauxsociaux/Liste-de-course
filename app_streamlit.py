@@ -80,31 +80,30 @@ etat = charger_etat()
 mise_a_jour_semaine(etat)
 semaine_actuelle = etat["semaine_actuelle"]
 
-if "jours_absents" not in st.session_state:
-    st.session_state.jours_absents = []
-if "stock_manquant" not in st.session_state:
-    st.session_state.stock_manquant = []
-if "ajouts_manuels" not in st.session_state:
-    st.session_state.ajouts_manuels = []
-if "liste_courses" not in st.session_state:
-    st.session_state.liste_courses = []
+for key in ["jours_absents_1", "jours_absents_2", "stock_manquant", "ajouts_manuels", "liste_courses"]:
+    if key not in st.session_state:
+        st.session_state[key] = []
 
 # === Interface ===
 st.title("🛒 Planificateur de courses")
 st.subheader(f"📆 Semaine actuelle : Semaine {semaine_actuelle}")
 
-# Absences
-with st.expander("🕒 Gérer les absences"):
-    jours = ["lundi soir", "mardi midi", "mardi soir", "mercredi midi", "mercredi soir",
-             "jeudi midi", "jeudi soir", "vendredi midi", "vendredi soir", "samedi midi",
-             "samedi soir", "dimanche midi", "dimanche soir"]
-    selection_absence = []
-    for jour in jours:
-        if st.checkbox(jour, key=f"absence_{jour}"):
-            selection_absence.append(jour)
-    if st.button("Valider les absences"):
-        st.session_state.jours_absents = selection_absence
-        st.success("Absences enregistrées.")
+# Absences par semaine
+with st.expander("🕒 Gérer les absences par semaine"):
+    jours_semaine = ["lundi midi", "lundi soir", "mardi midi", "mardi soir", "mercredi midi", "mercredi soir",
+                     "jeudi midi", "jeudi soir", "vendredi midi", "vendredi soir", "samedi midi", "samedi soir",
+                     "dimanche midi", "dimanche soir"]
+
+    st.subheader("Semaine 1")
+    absents_1 = st.multiselect("Jours absents (Semaine 1)", jours_semaine)
+
+    st.subheader("Semaine 2")
+    absents_2 = st.multiselect("Jours absents (Semaine 2)", jours_semaine)
+
+    if st.button("Valider les absences par semaine"):
+        st.session_state.jours_absents_1 = absents_1
+        st.session_state.jours_absents_2 = absents_2
+        st.success("Absences enregistrées pour les deux semaines.")
 
 # Stock
 with st.expander("📦 Ajouter du stock à racheter"):
@@ -133,17 +132,19 @@ if st.button("🏖️ Réinitialiser après vacances"):
 if st.button("📋 Générer la liste de courses"):
     quantites = defaultdict(int)
     recettes = planning.get(f"Semaine {semaine_actuelle}", [])
-    jours = ["lundi soir", "mardi midi", "mardi soir", "mercredi midi", "mercredi soir",
+    jours = ["lundi midi", "lundi soir", "mardi midi", "mardi soir", "mercredi midi", "mercredi soir",
              "jeudi midi", "jeudi soir", "vendredi midi", "vendredi soir", "samedi midi",
-             "samedi soir", "dimanche midi", "dimanche soir", "lundi midi"]
+             "samedi soir", "dimanche midi", "dimanche soir"]
+
+    absents = st.session_state.get(f"jours_absents_{semaine_actuelle}", [])
 
     for i, recette in enumerate(recettes):
         try:
-            jour_soir = jours[i * 2]
-            jour_midi = jours[i * 2 + 1]
+            jour_midi = jours[i * 2]
+            jour_soir = jours[i * 2 + 1]
         except IndexError:
             continue
-        if jour_soir in st.session_state.jours_absents and jour_midi in st.session_state.jours_absents:
+        if jour_midi in absents and jour_soir in absents:
             continue
         for ing in recettes_2repas.get(recette, []):
             match = re.match(r"(\d+)\s+(.*)", ing)
@@ -172,16 +173,16 @@ if st.button("📋 Générer la liste de courses"):
 if "liste_courses" in st.session_state and st.session_state.liste_courses:
     st.subheader("📋 Liste de courses")
 
+    # Sélection des éléments à supprimer
     suppression = st.multiselect("❌ Supprimer des éléments :", st.session_state.liste_courses)
 
+    # Bouton de suppression
     if st.button("Supprimer sélection") and suppression:
         st.session_state.liste_courses = [
             item for item in st.session_state.liste_courses if item not in suppression
         ]
         st.rerun()  # 🔁 Force le rafraîchissement de l'app après suppression
 
-    # Affichage mis à jour après suppression
+    # Affichage de la liste mise à jour
     liste_formatee = "\n".join([f"- {item}" for item in st.session_state.liste_courses])
     st.markdown(liste_formatee)
-
-
